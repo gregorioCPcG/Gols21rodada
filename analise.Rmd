@@ -1,0 +1,250 @@
+---
+title: "Tutorial R: Os gols do São Paulo na vigésima primeira rodada"
+output: html_document
+---
+
+Dois focos principais estruturam esse texto: 
+
+O primeiro é apresentar um tutorial de como fazer análises básicas no software estatístico R;
+
+O outro é que, ao fazê-lo, vamos utilizar um exemplo futebolístico e assim prever a posição final do São Paulo no campeonato brasileiro, bem como as chances de classificação à libertadores.
+
+Em primeiro lugar, você deve baixar o software, o passo a passo segue aqui: https://didatica.tech/como-instalar-a-linguagem-r-e-o-rstudio/
+
+Em Segundo lugar deves baixar na mesma pasta que fores rodar a análise a base de dados utilizada por essa pesquisa, a mesma consta disponível nesse link: https://docs.google.com/spreadsheets/d/1jQpi1bnSRkfWwQ1HenIc2301XmdvA_EU/edit?usp=sharing&ouid=110199422031960594145&rtpof=true&sd=true
+
+Após iniciar o R studio, abra um script (FILE - NEW FILE - SCRIPT) e vá colando os códigos
+
+A função library(nome do pacote), baixa os pacotes utilizados nessa análise. Para os pacotes que não constam instalado no teu pc, deves instalar antes:
+
+- install.packges('nome do pacote') entre aspas
+
+```{r}
+library(readxl)
+base <- read_excel("saopaulo21jogos.xlsx")
+
+str(base)#quais as variáveis do banco
+```
+
+-library(readxl) é relacionado ao pacote necessário para abrir arquivos de excel no R
+
+a segunda função (base <- ...) cria a base de dados a ser analisado;
+
+-str(nome da base): apresenta os dados do banco
+
+-'year' é ano
+
+-'gols21' - é quantidade de gols marcados pelo São Paulo Futebol Clube até as vigésima primeira rodada dos 18 campeonatos brasileiros entre 2003 e 2020
+
+-'libertadores' - é uma variável de valores 1 e 0, sendo 1 classificou à libertadores ao fim do campeonato e 0 não classificou
+
+-'posicao' - é a posição final do campeonato, sendo 1 primeiro e 13 décimo terceiro. 
+
+O que se segue tem 6 objetivos:
+
+1- verificar se o número de gols marcados até a vigésima primeira rodada tem relação com a classificação à libertadores
+
+2- verificar se o número de gols marcados até a vigésima primeira rodada tem relação com a classificação à libertadores
+
+3- tentar prever se o São Paulo se classificará à libertadores, tendo em vista que marcou 18  em 2021 até a vigésima primeira rodada
+
+4- tentar prever a posição final do São Paulo, tendo em vista que marcou 18 e em 2021 até a vigésima primeira
+
+Antes, entretanto,  vamos dar uma olhada em estatístiticas descritivas utilizando a variável 'gols21'.
+
+# Estatística descritiva gols do São Paulo FC até a vigésima primeira rodada
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+summary(base$gols21)
+```
+
+
+O menor valor da amostra é 20 gols, ou seja os 18 gols marcados é a pior vigésima primeira rodada da história são-paulina no atributo gols marcados.
+
+Os dados acima também nos mostram que a média histórica do São Paulo nas 18 primeiras edições do campeonato brasileiro por pontos corridos é de 30,44 gols até a vigésima primeira rodada
+
+```{r}
+g <- ggplot(base, aes(year, gols21))
+g +  geom_line()
+```
+
+Vemos no gráfico acima o numero de gols marcados por ano
+
+
+# Objetivo 1- verificar se o número de gols marcados até a vigésima primeira rodada tem relação com a classificação à libertadores
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+cor.test(base$gols21, base$libertadores)
+```
+
+A correlação é estatisticamente signficativa (p-value menor que 0.05) e com força de 0.52 (a medida vai de 0 a 1). Há correlação porém de força moderada.
+
+```{r}
+prop.table(table(base$libertadores))
+```
+
+Os dados acima mostram que em 66,66% (2/3) das vezes o são paulo se classificou à libertadores entre 2003 e 2020
+
+```{r}
+mean(base$libertadores)
+```
+
+A mesma medida pode ser obtida tirando a media da variável 'libertadores', já que a variável vai de 0 a 1, o valor de 0,66... equivale a 2/3
+
+O teste de correlação adequado é o ponto biserial, uma vez que uma das variáveis ('libertadores') assume somente assume dois valores
+
+```{r}
+library(polycor)
+polyserial(base$gols21, base$libertadores)
+```
+
+0.68 é um valor razoável, ou seja, como esperado marcar mais gols gera mais probabilidades de classificação à libertadores.
+
+
+```{r}
+library(coefplot)
+```
+
+regressão logísitica binária é o tipo de regressão indicada para variáveis como 'libertadores' (valores 0 e 1)
+
+```{r}
+modelo_obj1 <- glm(libertadores ~ gols21, data = base, family = binomial(link = logit))
+summary(modelo_obj1)
+coefplot(modelo_obj1, intercept= F)
+```
+
+'gols21' é explicativa à 90%. Na imagem isso fica nítido (linha grossa não passa no zero) que mais gols redunda em maiores probabilidades de classificação. A linha fina passa em cima do zero, isso quer dizer que a confiança à 95% não foi obtida.
+
+# Objetivo 2 - verificar se o número de gols marcados até a vigésima primeira rodada tem relação com a classificação à libertadores
+
+A posição está quantificada assim:
+
+```{r}
+table(base$posicao)
+```
+
+
+Sendo que a pior posição foi 13 (décimo terceiro), optou-se por criar uma nova variável dando mais peso às melhores classificação.
+
+Para isso se recodificou a variável 'posicao', criando a variável 'posicao_recod' (13-posicao):
+
+```{r}
+base$posicao_recod <- 13 - base$posicao 
+table(base$posicao_recod)
+```
+Fazendo uma simples operação  [ 13 - 'posicao' ], inverte-se a ordem.
+
+
+Ou seja, agora a primeira posição vale 12 pontos, a  segunda posição vale 11 e assim sucessivamente, confira:
+
+```{r}
+table(base$posicao, base$posicao_recod)
+```
+
+Logo, podemos analisar de forma a correlacionar gols na vigésima primeira rodada e posição final:
+
+```{r}
+a <- ggplot(base, aes(gols21, posicao_recod))
+a +  geom_point()
+```
+
+Percebemos à uma primeira vista que marcar mais gols melhora a posição.
+
+
+```{r}
+f <- ggplot(base, aes(gols21, posicao_recod))
+f +  geom_text(aes(label = year))
+```
+
+Na tabela acima observamos os ano. 
+
+```{r}
+c <- ggplot(base, aes(gols21, posicao_recod))
+c +  geom_smooth(model =lm)
+```
+
+O gráfico acima mostra que há uma relação linear (não-perfeita) entre as variáveis.
+
+```{r}
+cor.test(base$gols21, base$posicao_recod)
+```
+
+0.599 mostra haver certa correlação
+
+```{r}
+#gkgama
+library(vcdExtra)
+#Kendall
+library(Kendall)
+```
+
+
+O valor de 0,41 para teste Kendall e 0,441 para Kgamma mostram relação de leve para moderada
+
+```{r}
+Kendall(base$gols21, base$posicao_recod)
+gama1 <- table(base$gols21, base$posicao_recod)
+GKgamma(gama1)
+```
+
+
+```{r}
+modelo_obj2 <- lm(posicao_recod ~ gols21, data = base)
+summary(modelo_obj2)
+coefplot(modelo_obj2, intercept= T)
+```
+
+Os dois asteriscos na variável explicativa 'gols21' mostra que há significância estatística a 0.01. Ou seja o modelo prevê que cada gol a mais marcado até a vigésima primeira rodada eleva 0.3384 a posição final do campeonato
+
+# Objetivo 3 - tentar prever se o São Paulo se classificará à libertadores, tendo em vista que marcou 18  em 2021 até a vigésima primeira rodad
+
+```{r}
+library(Zelig)
+```
+
+```{r}
+z.out1 <- zelig(libertadores ~  gols21 , model = "logit", data = base, cite = FALSE)
+x.out1 <- Zelig::setx(z.out1,gols21 = 18)
+s.out1 <- sim(z.out1, x = x.out1)
+summary(s.out1)
+plot(s.out1)
+```
+
+O pacote Zelig gera 1000 simulações na regressão logística binária rodada anteriormente e vê-se (pequeno tamanho de y=1) que raramente nessas simulações com essa quantidade de gols (18 marcados em 2021) na vigésima primeira rodada, ocorreu a classificação para a liberta. 
+Ou seja, o time precisa melhorar muito seu desempenho se quiser se classificar à competição sulamericana. 
+
+Veja no gráfico inferior que a maior parte das simulações estão em números baixos e poucos se aproximam do 1. 
+
+# Objetivo 4- tentar prever a posição final do São Paulo, tendo em vista que marcou em 2021 até a vigésima primeira rodada 18 gols
+
+
+```{r}
+modelo_obj4 <- lm(posicao ~ gols21, data = base)
+```
+
+```{r}
+library(BAS)
+```
+
+
+```{r}
+prediction <-data.frame(gols21=18)
+pred = predict(modelo_obj4, newdata =prediction, estimator = "BPM",  se.fit=T)
+pred$fit  # fitted values
+```
+
+Na previsão da posição final, utilizando o pacote BAS, tem-se a expectativa de que terminará o Brasileirão 2021 em décimo lugar.
+
+Por óbvio, isso se trata de uma 'brincadeira', mas é interessante notar que com poucos passos é possível fazer simples previsões.
+Dúvidas? entre em contato cienciapoliticaporgregorio@gmail.com
+
+
